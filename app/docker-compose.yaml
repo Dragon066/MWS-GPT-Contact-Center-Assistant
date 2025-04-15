@@ -32,3 +32,6 @@ services:
       POSTGRES_DATABASE: ${POSTGRES_DATABASE}
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
