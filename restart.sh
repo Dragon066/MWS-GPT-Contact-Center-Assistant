@@ -2,4 +2,4 @@
 
 docker compose -f ./app/docker-compose.yaml down
 git pull
-docker compose -f ./app/docker-compose.yaml up --build -d
+docker compose -f ./app/docker-compose.yaml up --build -d -y
