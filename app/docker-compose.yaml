@@ -1,6 +1,6 @@
 services:
   frontend:
-    build: ./app/frontend
+    build: ./frontend
     restart: always
     ports:
       - "80:8002"
@@ -8,7 +8,7 @@ services:
       - backend
 
   backend:
-    build: ./app/backend
+    build: ./backend
     restart: always
     ports:
       - "80:8001"
@@ -16,7 +16,7 @@ services:
       - crm
 
   crm:
-    build: ./app/crm
+    build: ./crm
     restart: always
     ports:
       - "80:8003"
