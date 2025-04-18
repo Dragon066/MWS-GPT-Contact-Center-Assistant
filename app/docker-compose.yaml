@@ -1,27 +1,53 @@
 services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+      - crm
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - network
+
   frontend:
     build: ./frontend
     restart: always
     ports:
-      - "80:8002"
+      - "8001:8001"
     depends_on:
       - backend
+    networks:
+      - network
 
   backend:
     build: ./backend
     restart: always
     ports:
-      - "80:8001"
+      - "8002:8002"
     depends_on:
       - crm
+    networks:
+      - network
 
   crm:
     build: ./crm
     restart: always
     ports:
-      - "80:8003"
+      - "8003:8003"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - network
 
   db:
     image: postgres
@@ -29,9 +55,24 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DATABASE: ${POSTGRES_DATABASE}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # ports:
+    #   - "6000:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+    networks:
+      - network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
 
 volumes:
   pgdata:
+
+networks:
+  network:
+    driver: bridge
