@@ -27,15 +27,28 @@ class EmotionAgent(BaseAgent):
         )
 
     def _tools():
-        def lower_tool(query: str):
-            return query.lower()
+
+        # def lower_tool(query: str):
+        #     return query.lower()
+
+        # tools = [
+        #     Tool(
+        #         name="lower",
+        #         func=lower_tool,
+        #         description="Возвращает текст строчными буквами",
+        #     ),
+        # ]
+
+        # return tools
+        def classify_emotion(query: str):
+            prompt = f"""Ты — эксперт по анализу эмоций в тексте. Твоя задача — классифицировать эмоциональную окраску текста пользователя в следующем запросе на русском языке: '{query}'.  
+            Варианты: 1. Гнев 2. Радость 3. Печаль 4. Удивление 5. Нейтральное"""
 
         tools = [
             Tool(
                 name="lower",
-                func=lower_tool,
-                description="Возвращает текст строчными буквами",
+                func=classify_emotion,
+                description="Распознает одну из эмоций. Предварительно: 'гнев', 'радость', 'печаль', 'тоска', 'удивление', 'нейтральное'",
             ),
         ]
-
         return tools

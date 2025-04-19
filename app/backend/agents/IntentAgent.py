@@ -27,14 +27,15 @@ class IntentAgent(BaseAgent):
         )
 
     def _tools():
-        def lower_tool(query: str):
-            return query.lower()
+        def classify_intent(query: str):
+            prompt = f"Определи намерение пользователя в следующем запросе на русском языке: '{query}'. Возможные намерения: 'запрос на информацию', 'жалоба', 'вопрос', 'пожелание', 'техническая проблема', 'запрос на помощь'."
+            return prompt
 
         tools = [
             Tool(
-                name="lower",
-                func=lower_tool,
-                description="Возвращает текст строчными буквами",
+                name="classify_intent",
+                func=classify_intent,
+                description="Классифицирует намерение пользователя в запросе на русском языке.",
             ),
         ]
 
