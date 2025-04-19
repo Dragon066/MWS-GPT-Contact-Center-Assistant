@@ -6,8 +6,9 @@ db = Database()
 
 
 async def push_record(chat_id: int, chat_history):
-    request_id = db.add_new_request(chat_id)
-    asyncio.create_task(process_request(chat_id, request_id, chat_history))
+    request_id, is_new = db.add_new_request(chat_id, len(chat_history))
+    if is_new:
+        asyncio.create_task(process_request(chat_id, request_id, chat_history))
     return request_id
 
 

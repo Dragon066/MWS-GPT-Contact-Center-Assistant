@@ -21,6 +21,7 @@ class Requests(Base):
 
     id = Column(Integer, primary_key=True)
     chat_id = Column(Integer)
+    chat_length = Column(Integer)
     agent_statuses = Column(JSON, default={})
     actions = Column(JSON, default=[])
     emotion = Column(String, default=None)
@@ -66,7 +67,7 @@ class Database:
     def close(self):
         self.Session.remove()
 
-    def add_new_request(self, id_chat):
+    def add_new_request(self, id_chat, chat_length: int) -> tuple[int, bool]:
         with self._get_session() as session:
             if (
                 not session.query(ChatSummary)
@@ -78,12 +79,25 @@ class Database:
                 )
                 session.add(new_data_chatsummary)
 
+            existing_request = (
+                session.query(Requests)
+                .filter(
+                    Requests.chat_id == id_chat,
+                    Requests.chat_length == chat_length,
+                )
+                .first()
+            )
+
+            if existing_request:
+                return existing_request.id, False
+
             new_data_request = Requests(
                 chat_id=id_chat,
+                chat_length=chat_length,
             )
             session.add(new_data_request)
             session.commit()
-            return new_data_request.id
+            return new_data_request.id, True
 
     def update_request_status(self, id_request: int, agent: str, status: str):
         with self._get_session() as session:
