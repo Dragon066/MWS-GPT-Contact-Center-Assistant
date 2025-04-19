@@ -81,7 +81,6 @@ class KnowledgeAgent(BaseAgent):
             # Здесь будет интеграция с Qdrant в реальной версии
             return fake_db.query(query)
 
-        # Связываем всё в цепочку
         chain = prompt | llm | StrOutputParser()
 
         # Возвращаем цепочку
