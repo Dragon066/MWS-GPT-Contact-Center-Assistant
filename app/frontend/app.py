@@ -9,7 +9,7 @@ def main():
 
     # Получаем параметры из URL
     query_params = st.query_params
-    chat_id = query_params.get("id", [None])[0]
+    chat_id = query_params.get("id", [None])
     operator_name = unquote(query_params.get("operatorName", [""]))
     operator_position = unquote(query_params.get("operatorPosition", [""]))
 
