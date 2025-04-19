@@ -48,6 +48,11 @@ DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 
 
 class Database:
+    def __new__(cls):
+        if not hasattr(cls, "instance"):
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
     def __init__(self):
         dsn = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
@@ -65,7 +70,7 @@ class Database:
         with self._get_session() as session:
             if (
                 not session.query(ChatSummary)
-                .filter(ChatSummary.id_chat == id_chat)
+                .filter(ChatSummary.chat_id == id_chat)
                 .first()
             ):
                 new_data_chatsummary = ChatSummary(
@@ -86,7 +91,7 @@ class Database:
             if not request:
                 raise ValueError(f"Request with id {id_request} not found")
 
-            current_statuses = request.agent_statuses
+            current_statuses = dict(request.agent_statuses)
 
             current_statuses[agent] = status
 
