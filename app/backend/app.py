@@ -26,7 +26,7 @@ async def get_request_info(request_id: int):
     try:
         data = db.get_request_data(request_id)
     except Exception as ex:
-        data = {"Error": ex}
+        data = {"error": str(ex)}
     return data
 
 
@@ -35,5 +35,5 @@ async def get_chat_info(chat_id: int):
     try:
         data = db.get_chat_summary_data(chat_id)
     except Exception as ex:
-        data = {"Error": ex}
+        data = {"error": str(ex)}
     return data
