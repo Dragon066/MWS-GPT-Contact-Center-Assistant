@@ -27,8 +27,15 @@ services:
     restart: always
     ports:
       - "8002:8002"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     depends_on:
-      - crm
+      db:
+        condition: service_healthy
     networks:
       - network
 
