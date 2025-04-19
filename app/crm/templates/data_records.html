@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Records</title>
+    <title>CRM-система</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -134,6 +134,61 @@
         .operator-info p {
             margin: 5px 0;
         }
+        .file-upload {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f7ff;
+            border-radius: 4px;
+        }
+        .file-upload h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .file-upload-form {
+            margin-top: 10px;
+        }
+        .file-input {
+            margin-bottom: 10px;
+        }
+        .upload-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .upload-btn:hover {
+            background-color: #45a049;
+        }
+        .last-file {
+            margin-top: 10px;
+            padding: 8px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .last-file strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background-color: #e0e0e0;
+            margin-top: 10px;
+            border-radius: 2px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -154,6 +209,24 @@
             <p><strong>Текущий оператор:</strong></p>
             <p id="displayName"></p>
             <p id="displayPosition"></p>
+        </div>
+        
+        <div class="file-upload">
+            <h3>Замена файла БД</h3>
+            <form id="fileUploadForm" class="file-upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" id="fileInput" class="file-input" name="file" required>
+                </div>
+                <button type="submit" class="upload-btn">Загрузить</button>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress" id="progress"></div>
+                </div>
+            </form>
+            
+            <div class="last-file" id="lastFileContainer">
+                <strong>Последний загруженный файл:</strong>
+                <span id="lastFileName">Загрузка...</span>
+            </div>
         </div>
     </div>
     
@@ -203,7 +276,7 @@
                                 </div>
                             {% else %}
                                 <div class="record-detail">
-                                    <strong>No chat messages yet</strong>
+                                    <strong>Ещё не было сообщений</strong>
                                 </div>
                             {% endif %}
                         </div>
@@ -212,7 +285,7 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p class="no-records">No records found in the database.</p>
+        <p class="no-records">Нет записей</p>
     {% endif %}
     </div>
 
@@ -250,6 +323,9 @@
                 displayPosition.textContent = savedPosition;
                 operatorDisplay.style.display = 'block';
             }
+            
+            // Загружаем информацию о последнем файле
+            fetchCollectionSize();
         });
         
         // Обработка клика по записи
@@ -267,6 +343,83 @@
             
             // Переходим по сформированному URL
             window.location.href = url;
+        }
+        
+        // Обработка загрузки файла
+        const fileUploadForm = document.getElementById('fileUploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progress = document.getElementById('progress');
+        const lastFileName = document.getElementById('lastFileName');
+        
+        fileUploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                progressBar.style.display = 'block';
+                progress.style.width = '0%';
+                
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/llmapi/upload', true);
+                
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progress.style.width = percentComplete + '%';
+                    }
+                };
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        lastFileName.textContent = response.filename || 'Файл загружен';
+                        fileInput.value = '';
+                        setTimeout(() => {
+                            progressBar.style.display = 'none';
+                        }, 1000);
+                        
+                        // Обновляем информацию о последнем файле
+                        fetchCollectionSize();
+                    } else {
+                        lastFileName.textContent = 'Ошибка загрузки: ' + xhr.statusText;
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    lastFileName.textContent = 'Ошибка сети при загрузке файла';
+                    progressBar.style.display = 'none';
+                };
+                
+                xhr.send(formData);
+                
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                lastFileName.textContent = 'Ошибка: ' + error.message;
+                progressBar.style.display = 'none';
+            }
+        });
+        
+        // Функция для получения количества точек в коллекции
+        async function fetchCollectionSize() {
+            try {
+                const response = await fetch('/llmapi/collection_size');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.points_count !== undefined) {
+                        lastFileName.textContent = `Количество данных: ${data.points_count}`;
+                    } else {
+                        lastFileName.textContent = 'Коллекция пуста или не существует';
+                    }
+                } else {
+                    lastFileName.textContent = 'Не удалось загрузить информацию о коллекции';
+                }
+            } catch (error) {
+                console.error('Error fetching collection size:', error);
+                lastFileName.textContent = 'Ошибка загрузки информации о коллекции';
+            }
         }
     </script>
 </body>
