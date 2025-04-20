@@ -1,5 +1,6 @@
 import asyncio
 import io
+import logging
 
 import aiohttp
 from core import process_solved_chat, push_record
@@ -15,6 +16,13 @@ from qdrant import (
 app = FastAPI()
 
 db = Database()
+
+logging.getLogger("uvicorn.access").addFilter(
+    lambda record: "/get_chat_info" not in record.getMessage()
+)
+logging.getLogger("uvicorn.access").addFilter(
+    lambda record: "/get_request_info" not in record.getMessage()
+)
 
 
 async def fetch_json(url):
