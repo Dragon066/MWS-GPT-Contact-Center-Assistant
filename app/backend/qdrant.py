@@ -64,3 +64,20 @@ def get_collection(collection_name: str):
     if not is_collection_exists(collection_name):
         raise ValueError(f"Collection {collection_name} not found")
     return qdrant_client.get_collection(collection_name)
+
+
+def get_topk_results(collection_name: str, text: str, k: int = 3):
+    emb = (
+        llm_client.embeddings.create(
+            model=LLM_EMBEDDING_MODEL,
+            input=text,
+        )
+        .data[0]
+        .embedding
+    )
+    most_relevant = qdrant_client.query_points(
+        collection_name=collection_name, query=emb, limit=k
+    )
+    most_relevant = [m.payload for m in most_relevant]
+
+    return most_relevant
