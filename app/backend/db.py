@@ -99,6 +99,26 @@ class Database:
             session.commit()
             return new_data_request.id, True
 
+    def get_last_request(self, id_chat) -> int:
+        with self._get_session() as session:
+            if (
+                not session.query(ChatSummary)
+                .filter(ChatSummary.chat_id == id_chat)
+                .first()
+            ):
+                return {"error": f"no chat #{id_chat}"}
+
+            existing_request = (
+                session.query(Requests)
+                .filter(
+                    Requests.chat_id == id_chat,
+                )
+                .order_by(Requests.id.desc())
+                .first()
+            )
+
+            return existing_request.id
+
     def update_request_status(self, id_request: int, agent: str, status: str):
         with self._get_session() as session:
             request = session.query(Requests).filter(Requests.id == id_request).first()
