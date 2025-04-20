@@ -78,6 +78,6 @@ def get_topk_results(collection_name: str, text: str, k: int = 3):
     most_relevant = qdrant_client.query_points(
         collection_name=collection_name, query=emb, limit=k
     )
-    most_relevant = [m.payload for m in most_relevant]
+    most_relevant = [m.payload for m in most_relevant.points]
 
     return most_relevant
