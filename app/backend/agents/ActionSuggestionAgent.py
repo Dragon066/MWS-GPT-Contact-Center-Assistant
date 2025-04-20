@@ -1,81 +1,71 @@
+import ast
 import os
+from typing import Dict, List
 
-from langchain.agents import AgentExecutor, AgentType, Tool, initialize_agent
-from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import Runnable
 from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI
 
-from BaseAgent import BaseAgent
+from .BaseAgent import BaseAgent
 
 
-# class ActionSuggestionAgent(BaseAgent):
-#     def __new__(cls, verbose: bool = False) -> AgentExecutor:
-#         llm = cls._llm(verbose)
-#         tools = cls._tools()
-#         agent = initialize_agent(
-#             tools,
-#             llm,
-#             agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-#             verbose=verbose,
-#         )
-#         return agent
+class PythonListOutputParser(StrOutputParser):
+    def parse(self, text: str) -> List[Dict]:
+        try:
+            # Извлекаем список из текста ответа
+            start = text.find("[")
+            end = text.rfind("]") + 1
+            return ast.literal_eval(text[start:end])
+        except (SyntaxError, ValueError):
+            return []  # Возвращаем пустой список при ошибке парсинга
 
-#     def _llm(verbose: bool):
-#         return ChatOpenAI(
-#             base_url=BaseAgent.LLM_BASE_URL,
-#             api_key=BaseAgent.LLM_API_KEY,
-#             model=os.getenv("LLM_ACTIONSUGGESTION_AGENT", "qwen2.5-32b-instruct"),
-#             verbose=verbose,
-#         )
-
-#     def _tools():
-#         def lower_tool(query: str):
-#             return query.lower()
-
-#         tools = [
-#             Tool(
-#                 name="lower",
-#                 func=lower_tool,
-#                 description="Возвращает текст строчными буквами",
-#             ),
-#         ]
-
-#         return tools
 
 class ActionSuggestionAgent(BaseAgent):
-    def __init__(self, verbose: bool = False):
-        self.llm = ChatOpenAI(
-            base_url=os.getenv("LLM_BASE_URL"),
-            api_key=os.getenv("LLM_API_KEY"),
-            model="qwen2.5-32b-instruct",
-            temperature=0.3,
+    def __new__(cls, verbose: bool = False) -> Runnable:
+        llm = ChatOpenAI(
+            base_url=BaseAgent.LLM_BASE_URL,
+            api_key=BaseAgent.LLM_API_KEY,
+            model=os.getenv("LLM_ACTION_AGENT", "qwen2.5-32b-instruct"),
+            temperature=0.3,  # Немного креативности
             verbose=verbose,
         )
 
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", """Ты — агент предложения действий в CRM. Всегда отвечай в формате:
-            Thought: <анализ контекста, эмоции и намерения>
-            Action: <конкретное действие или шаг>
-            Answer: <готовый текст для оператора или клиента>"""),
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """Ты — AI-ассистент оператора поддержки. Сгенерируй 2-3 действия для оператора на основе:
+                - История чата: {chat}
+                - Данные из базы знаний: {knowledge}
+                - Эмоция клиента: {emotion}
+                - Тема чата: {intent}
+                - Метаданные клиента: {metadata}
+                - Информация об операторе: {operator}
 
-            #с примером еще подумать надо
-            # ("system", """Пример:
-            # Thought: Клиент раздражен (гнев), намерение — прекращение пользования услугами нашей компании. Контекст: политика возвратов позволяет предложить компенсацию.
-            # Action: Предложить скидку 10% и извиниться.
-            # Answer: "Извините за задержку! В качестве компенсации предлагаем скидку 10% на следующий заказ."""),
+                Формат ответа ТОЛЬКО как Python-список словарей:
+                actions = [{{"title": "Заголовок", "text": "Описание", "type": "тип"}}, ...]
 
-            ("human", """Эмоция: {emotion}
-            Намерение: {intent}
-            Контекст: {context}
-            Запрос пользователя: "{text}" """)
-        ])
+                Возможные типы действий:
+                - help: Предложение помощи/решения
+                - compensation: Компенсация/бонусы
+                - escalation: Эскалация проблемы
+                - feedback: Запрос обратной связи
+                - greeting: Приветствие/прощание
 
-        self.chain = self.prompt | self.llm | StrOutputParser()
+                Пример:
+                actions = [
+                    {{"title": "Решение проблемы", 
+                    "text": "Для решения вашей проблемы попробуйте...", 
+                    "type": "help"}},
+                    {{"title": "Подарок за проблемы",
+                    "text": "В качестве извинений предлагаем...",
+                    "type": "compensation"}}
+                ]""",
+                )
+            ]
+        )
 
-    def invoke(self, text: str, emotion: str, intent: str, context: str) -> str:
-        return self.chain.invoke({
-            "text": text,
-            "emotion": emotion,
-            "intent": intent,
-            "context": context
-        })
+        chain = prompt | llm | PythonListOutputParser()
+
+        return chain
