@@ -1,3 +1,4 @@
+import asyncio
 import io
 
 import aiohttp
@@ -66,3 +67,9 @@ async def get_collection_size():
         return {"points_count": get_collection("database").points_count}
     else:
         return {"error": "no collection"}
+
+
+@app.get("/llmquery")
+async def process_llm_query(query: str, chat_id: int):
+    await asyncio.sleep(2)
+    return {"result": f"был получен запрос: {query}"}
