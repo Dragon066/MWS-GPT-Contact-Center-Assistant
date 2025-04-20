@@ -1,6 +1,6 @@
 from urllib.parse import quote_plus
 
-from crm_api import get_last_chat_messages, get_records, router
+from crm_api import get_all_records, get_last_chat_messages, router
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 
@@ -26,7 +26,7 @@ templates.env.filters["truncate"] = truncate_filter
 
 @app.get("/")
 async def root(request: Request):
-    records = await get_records()
+    records = await get_all_records()
     latest_chats = await get_last_chat_messages()
     latest_chats = {chat.record_id: chat for chat in latest_chats}
     return templates.TemplateResponse(

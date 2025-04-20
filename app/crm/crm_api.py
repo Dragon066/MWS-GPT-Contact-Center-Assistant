@@ -17,13 +17,19 @@ async def push_record(
     return {"status": "success"}
 
 
-async def get_records():
+async def get_all_records():
     return db.get_all_records()
 
 
+async def get_record(id_chat):
+    return db.get_record(id_chat)
+
+
 @router.get("/records")
-async def get_records_api():
-    return await get_records()
+async def get_records_api(id_chat: int | None = None):
+    if id_chat is None:
+        return await get_all_records()
+    return await get_record(id_chat)
 
 
 async def get_chat(id_chat):

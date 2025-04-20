@@ -84,6 +84,11 @@ class Database:
             query = session.query(Records)
             return query.all()
 
+    def get_record(self, record_id=None):
+        with self._get_session() as session:
+            query = session.query(Records).filter(Records.id == record_id)
+            return query.first()
+
     def get_all_messages(self, id_chat=None):
         with self._get_session() as session:
             query = session.query(Chats).filter(Chats.record_id == id_chat)
