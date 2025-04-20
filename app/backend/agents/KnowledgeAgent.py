@@ -2,6 +2,7 @@ import os
 
 import requests
 from langchain.agents import AgentType, Tool, initialize_agent
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.runnable import Runnable
 from langchain_openai import ChatOpenAI
 
@@ -19,11 +20,25 @@ class KnowledgeAgent(BaseAgent):
 
         tools = cls._tools()
 
+        system_prompt = """Ты экспертный помощник компании. ИСПОЛЬЗУЙ РУССКИЙ ЯЗЫК. Всегда сначала используй инструмент Vector Search 
+        для поиска информации в базе знаний. Отвечай только на основе найденных данных. Если информации нет, 
+        скажи об этом. Не выдумывай факты. Формат ответа: развёрнутый, но по делу. Если ты нашёл очень близкую информацию к твоему запросу
+        - отвечай максимально приближенно к эталонному ответу из базы знаний."""
+
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                ("human", "{input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ]
+        )
+
         agent = initialize_agent(
             tools,
             llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
             verbose=verbose,
+            agent_kwargs={"prompt": prompt},
         )
 
         return agent
@@ -34,7 +49,7 @@ class KnowledgeAgent(BaseAgent):
                 r = requests.get(
                     f"http://backend:8002/qdrantquery?query={query}"
                 ).json()
-                return r
+                return str(r)
             except Exception as ex:
                 return f"Возникла ошибка при запросе: {ex}"
 
@@ -42,7 +57,7 @@ class KnowledgeAgent(BaseAgent):
             Tool(
                 name="Vector Search",
                 func=vector_search,
-                description="Осуществляет поиск по базе знаний с помощью переданной строки query. Используй всегда. Передавать в аргумент без изменений.",
+                description="Осуществляет поиск по базе знаний с помощью переданной строки query. Используй всегда. Передавай в аргументы что считаешь нужным",
             ),
         ]
 
