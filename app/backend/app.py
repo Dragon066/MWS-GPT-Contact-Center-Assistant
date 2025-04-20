@@ -2,10 +2,15 @@ import asyncio
 import io
 
 import aiohttp
-from core import push_record
+from core import process_solved_chat, push_record
 from db import Database
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from qdrant import create_collection_from_file, get_collection, is_collection_exists
+from qdrant import (
+    create_collection_from_file,
+    get_collection,
+    get_topk_results,
+    is_collection_exists,
+)
 
 app = FastAPI()
 
@@ -23,6 +28,13 @@ async def push_request(chat_id: int):
     chat_history = await fetch_json(f"http://crm:8003/api/chat?id_chat={chat_id}")
     request_id = await push_record(chat_id, chat_history)
     return {"request_id": request_id}
+
+
+@app.get("/push_solved_record")
+async def push_solved_record(chat_id: int):
+    chat_history = await fetch_json(f"http://crm:8003/api/chat?id_chat={chat_id}")
+    await process_solved_chat(chat_id, chat_history)
+    return {"success": "ok"}
 
 
 @app.get("/get_request_info")
@@ -73,3 +85,8 @@ async def get_collection_size():
 async def process_llm_query(query: str, chat_id: int):
     await asyncio.sleep(2)
     return {"result": f"был получен запрос: {query}"}
+
+
+@app.get("/qdrantquery")
+async def qdrantquery(query: str, k: int = 3):
+    return get_topk_results("database", query, k)
