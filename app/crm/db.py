@@ -1,6 +1,8 @@
 import os
 
+from fake_meta import generate_subscriber
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -22,6 +24,7 @@ class Records(Base):
     id = Column(Integer, primary_key=True)
     type = Column(String)
     solved = Column(Boolean, default=False)
+    client_meta = Column(JSON, default={})
 
     chats = relationship("Chats", back_populates="record")
 
@@ -65,6 +68,7 @@ class Database:
                 new_data = Records(
                     id=id_chat,
                     type=type,
+                    client_meta=generate_subscriber(),
                 )
                 session.add(new_data)
             new_data_chats = Chats(
