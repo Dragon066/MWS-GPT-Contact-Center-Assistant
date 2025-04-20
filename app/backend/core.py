@@ -36,7 +36,18 @@ async def process_request(chat_id: int, request_id: int, chat_history):
 
     db.update_request_status(request_id, "actions", "in work")
     await asyncio.sleep(1)
-    actions = ["Добри день...", "Здравствути...", "Пока..."]
+    actions = [
+        {
+            "title": "Ответ из БД",
+            "text": "Вот что я нашёл по вашей проблеме: вам срочно нужно **покакать**!",
+            "type": "help",
+        },
+        {
+            "title": "Предложить компенсацию",
+            "text": "Простите нас пожалуйста, вот вам промокодик на 5тыщ: мяумяумяумяу",
+            "type": "compensation",
+        },
+    ]
     db.update_request_status(request_id, "actions", "done")
     db.update_request_actions(request_id, actions)
 
