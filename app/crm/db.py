@@ -25,6 +25,7 @@ class Records(Base):
     type = Column(String)
     solved = Column(Boolean, default=False)
     client_meta = Column(JSON, default={})
+    crm_summary = Column(JSON, default={})
 
     chats = relationship("Chats", back_populates="record")
 
@@ -123,6 +124,15 @@ class Database:
             record = session.query(Records).filter(Records.id == id_chat).first()
             if record:
                 record.solved = True
+                session.commit()
+                return True
+            return False
+
+    def push_crm_summary(self, id_chat, summary):
+        with self._get_session() as session:
+            record = session.query(Records).filter(Records.id == id_chat).first()
+            if record:
+                record.crm_summary = summary
                 session.commit()
                 return True
             return False
