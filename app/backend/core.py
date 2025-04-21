@@ -1,8 +1,11 @@
 import asyncio
+import json
 import os
 
+import requests
 from agents import (
     ActionSuggestionAgent,
+    AssistantAgent,
     EmotionAgent,
     IntentAgent,
     KnowledgeAgent,
@@ -40,25 +43,43 @@ summary_agent = SummaryAgent(VERBOSE_MODELS_CHAINS)
 quality_agent = QualityAssuranceAgent(VERBOSE_MODELS_CHAINS)
 action_agent = ActionSuggestionAgent(VERBOSE_MODELS_CHAINS)
 resolution_agent = ResolutionAgent(VERBOSE_MODELS_CHAINS)
+assistant_agent = AssistantAgent(VERBOSE_MODELS_AGENTS)
 
 
-async def push_record(chat_id: int, chat_history):
+async def push_record(chat_id: int, chat_history, operatorName, operatorPosition):
     if chat_history[-1]["role"] in ("human", "user"):
         request_id, is_new = db.add_new_request(chat_id, len(chat_history))
     else:
         request_id = db.get_last_request(chat_id)
         is_new = False
     if is_new:
-        asyncio.create_task(process_request(chat_id, request_id, chat_history))
+        asyncio.create_task(
+            process_request(
+                chat_id, request_id, chat_history, operatorName, operatorPosition
+            )
+        )
     return request_id
 
 
-async def process_request(chat_id: int, request_id: int, chat_history):
+async def push_solved_chat(chat_id: int, chat_history):
+    request_id = db.get_last_request(chat_id)
+    asyncio.create_task(process_solved_chat(chat_id, request_id, chat_history))
+    return request_id
+
+
+async def process_request(
+    chat_id: int, request_id: int, chat_history, operatorName, operatorPosition
+):
     intent_agent_track = with_tracking(intent_agent, "intent", request_id)
     emotion_agent_track = with_tracking(emotion_agent, "emotion", request_id)
     knowledge_agent_track = with_tracking(knowledge_agent, "knowledge", request_id)
     summary_agent_track = with_tracking(summary_agent, "summary", request_id)
     action_agent_track = with_tracking(action_agent, "action", request_id)
+    db.update_request_status(request_id, "intent", "off")
+    db.update_request_status(request_id, "emotion", "off")
+    db.update_request_status(request_id, "knowledge", "off")
+    db.update_request_status(request_id, "summary", "off")
+    db.update_request_status(request_id, "action", "off")
 
     last_message = chat_history[-1]["content"]
 
@@ -76,31 +97,48 @@ async def process_request(chat_id: int, request_id: int, chat_history):
 
     knowledge = await knowledge_agent_track.ainvoke(chat_history)
 
+    metadata = requests.get(f"http://crm:8003/api/records?id_chat={chat_id}").json()[
+        "client_meta"
+    ]
+
     actions = await action_agent_track.ainvoke(
         {
             "chat": chat_history,
             "knowledge": knowledge,
             "emotion": emotion_last,
             "intent": intent,
-            "metadata": {"not": "provided"},
-            "operator": {"name": "Алексей", "position": "Технический специалист"},
+            "metadata": metadata,
+            "operator": {"name": operatorName, "position": operatorPosition},
         }
     )
     db.update_request_actions(request_id, actions)
 
+    crm = {
+        "intent": intent,
+        "emotion": emotion_chat,
+        "summary": short_summary,
+    }
 
-async def process_solved_chat(chat_id: int, chat_history):
-    request_id = db.get_last_request(chat_id)
+    requests.get(
+        f"http://crm:8003/api/push_crm_summary?id_chat={chat_id}&summary={json.dumps(crm)}"
+    )
 
+
+async def process_solved_chat(chat_id: int, request_id: int, chat_history):
     summary_agent_track = with_tracking(summary_agent, "summary", request_id)
     quality_agent_track = with_tracking(quality_agent, "quality", request_id)
     resolution_agent_track = with_tracking(resolution_agent, "resolution", request_id)
+    db.update_request_status(request_id, "summary", "off")
+    db.update_request_status(request_id, "quality", "off")
+    db.update_request_status(request_id, "resolution", "off")
+
+    data = db.get_chat_summary_data(chat_id)
+
+    intent = data.intent
+    emotion = data.emotion_summary
 
     summary = await summary_agent_track.ainvoke(chat_history)
-    db.update_chat_summary_intent(chat_id, summary)
-
-    intent = "to add"
-    emotion = "to add"
+    db.update_chat_summary_short_summary(chat_id, summary)
 
     quality = await quality_agent_track.ainvoke(chat_history)
 
@@ -114,4 +152,11 @@ async def process_solved_chat(chat_id: int, chat_history):
         "resolution": resolution,
     }
 
-    print(crm)
+    requests.get(
+        f"http://crm:8003/api/push_crm_summary?id_chat={chat_id}&summary={json.dumps(crm)}"
+    )
+
+
+async def llmquery(query: str, chat_history):
+    result = await assistant_agent.ainvoke(f"{chat_history} | ВОПРОС: {query}")
+    return result["output"]
