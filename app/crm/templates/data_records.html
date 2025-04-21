@@ -35,6 +35,10 @@
             margin-bottom: 8px;
             border-radius: 4px;
             overflow: hidden;
+            display: flex;
+        }
+        .record-content {
+            flex: 1;
         }
         .record-link {
             display: block;
@@ -189,6 +193,105 @@
             width: 0%;
             transition: width 0.3s;
         }
+        
+        /* Стили для кнопки просмотра сводки */
+        .summary-btn {
+            width: 40px;
+            background-color: #45a049;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .summary-btn:hover {
+            background-color: #4CAF50;
+        }
+        .summary-btn.solved {
+            background-color: #924444;
+        }
+        .summary-btn.solved:hover {
+            background-color: #a73939;
+        }
+        
+        /* Стили для модального окна */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #777;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .summary-item {
+            margin-bottom: 15px;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .summary-value {
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 3px solid #2196F3;
+        }
+        .summary-rating {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -253,40 +356,84 @@
             {% for record in records|sort(attribute='id', reverse=true) %}
                 {% set last_chat = latest_chats.get(record.id) %}
                 <li class="record-item">
-                    <a href="#" 
-                    class="record-link {% if record.solved %}solved{% endif %}"
-                    onclick="handleRecordClick('{{ record.id }}', '{{ record.type }}'); return false;">
-                        <div class="record-header">
-                            <div>
-                                <span class="record-title">({{ last_chat.created_at.strftime('%Y-%m-%d %H:%M') }}) {{ record.type | upper }}</span>
-                                <span class="record-id">Chat ID: {{ record.id }}</span>
+                    <div class="record-content">
+                        <a href="#" 
+                        class="record-link {% if record.solved %}solved{% endif %}"
+                        onclick="handleRecordClick('{{ record.id }}', '{{ record.type }}'); return false;">
+                            <div class="record-header">
+                                <div>
+                                    <span class="record-title">({{ last_chat.created_at.strftime('%Y-%m-%d %H:%M') }}) {{ record.type | upper }}</span>
+                                    <span class="record-id">Chat ID: {{ record.id }}</span>
+                                </div>
+                                {% if record.solved %}
+                                    <span class="status-badge">SOLVED</span>
+                                {% endif %}
                             </div>
-                            {% if record.solved %}
-                                <span class="status-badge">SOLVED</span>
-                            {% endif %}
-                        </div>
-                        <div class="record-details">
-                            {% if last_chat %}
-                                <div class="record-detail">
-                                    <strong>Last message:</strong> 
-                                    {{ last_chat.content | truncate(60) }}
-                                </div>
-                                <div class="record-detail">
-                                    <strong>Role:</strong> {{ last_chat.role | capitalize }}
-                                </div>
-                            {% else %}
-                                <div class="record-detail">
-                                    <strong>Ещё не было сообщений</strong>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </a>
+                            <div class="record-details">
+                                {% if last_chat %}
+                                    <div class="record-detail">
+                                        <strong>Last message:</strong> 
+                                        {{ last_chat.content | truncate(60) }}
+                                    </div>
+                                    <div class="record-detail">
+                                        <strong>Role:</strong> {{ last_chat.role | capitalize }}
+                                    </div>
+                                {% else %}
+                                    <div class="record-detail">
+                                        <strong>Ещё не было сообщений</strong>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                    <button class="summary-btn {% if record.solved %}solved{% endif %}" 
+                            onclick="showSummary('{{ record.id }}')" 
+                            title="Просмотр сводки">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                        </svg>
+                    </button>
                 </li>
             {% endfor %}
         </ul>
     {% else %}
         <p class="no-records">Нет записей</p>
     {% endif %}
+    </div>
+
+    <!-- Модальное окно для отображения сводки -->
+    <div class="modal-overlay" id="summaryModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">CRM Сводка</h3>
+                <button class="modal-close" onclick="closeSummary()">&times;</button>
+            </div>
+            <div class="modal-body" id="summaryContent">
+                <div class="summary-item">
+                    <span class="summary-label">Намерение клиента:</span>
+                    <div class="summary-value" id="summary-intent">Загрузка...</div>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Эмоциональный фон:</span>
+                    <div class="summary-value" id="summary-emotion">Загрузка...</div>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Краткая сводка:</span>
+                    <div class="summary-value" id="summary-summary">Загрузка...</div>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Качество обслуживания:</span>
+                    <div class="summary-value">
+                        <div id="summary-quality">Загрузка...</div>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Решение проблемы:</span>
+                    <div class="summary-value" id="summary-resolution">Загрузка...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -421,6 +568,64 @@
                 lastFileName.textContent = 'Ошибка загрузки информации о коллекции';
             }
         }
+        
+        // Функции для работы с модальным окном сводки
+        let currentChatId = null;
+        
+        function showSummary(chatId) {
+            currentChatId = chatId;
+            const modal = document.getElementById('summaryModal');
+            modal.classList.add('active');
+            
+            // Загружаем данные сводки
+            fetchSummaryData(chatId);
+        }
+        
+        function closeSummary() {
+            const modal = document.getElementById('summaryModal');
+            modal.classList.remove('active');
+        }
+        
+        async function fetchSummaryData(chatId) {
+            try {
+                // Устанавливаем состояние загрузки
+                document.getElementById('summary-intent').textContent = 'Загрузка...';
+                document.getElementById('summary-emotion').textContent = 'Загрузка...';
+                document.getElementById('summary-summary').textContent = 'Загрузка...';
+                document.getElementById('summary-quality').textContent = 'Загрузка...';
+                document.getElementById('summary-resolution').textContent = 'Загрузка...';
+                
+                const response = await fetch(`/crm/api/records?id_chat=${chatId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const summary = data.crm_summary;
+                    
+                    // Заполняем данные
+                    document.getElementById('summary-intent').textContent = summary.intent || 'Не указано';
+                    document.getElementById('summary-emotion').textContent = summary.emotion || 'Не указано';
+                    document.getElementById('summary-summary').textContent = summary.summary || 'Не указано';
+                    document.getElementById('summary-quality').textContent = summary.quality || 'Не указано';
+                    document.getElementById('summary-resolution').textContent = summary.resolution || 'Не указано';
+                
+                } else {
+                    throw new Error('Не удалось загрузить данные сводки');
+                }
+            } catch (error) {
+                console.error('Error fetching summary:', error);
+                document.getElementById('summary-intent').textContent = 'Ошибка загрузки данных';
+                document.getElementById('summary-emotion').textContent = 'Ошибка загрузки данных';
+                document.getElementById('summary-summary').textContent = 'Ошибка загрузки данных';
+                document.getElementById('summary-quality').textContent = 'Ошибка загрузки данных';
+                document.getElementById('summary-resolution').textContent = 'Ошибка загрузки данных';
+            }
+        }
+        
+        // Закрытие модального окна при клике вне его
+        document.getElementById('summaryModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSummary();
+            }
+        });
     </script>
 </body>
 </html>
