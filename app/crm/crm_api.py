@@ -1,7 +1,6 @@
-import json
-
 from db import Database
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api")
 
@@ -51,16 +50,27 @@ async def mark_as_solved(id_chat):
     return db.mark_as_solved(id_chat)
 
 
-@router.get("/mark_as_solved")
-async def mark_as_solved_api(id_chat: int):
+class ChatIdRequest(BaseModel):
+    id_chat: int
+
+
+@router.post("/mark_as_solved")
+async def mark_as_solved_api(request: ChatIdRequest):
     """Пометить чат как решённый"""
-    return await mark_as_solved(id_chat)
+    return await mark_as_solved(request.id_chat)
 
 
-@router.get("/push_crm_summary")
-async def push_crm_summary_api(id_chat: int, summary: str):
+class CRMRequest(BaseModel):
+    id_chat: int
+    summary: dict
+
+
+@router.post("/push_crm_summary")
+async def push_crm_summary_api(request: CRMRequest):
     """Запушить отчёт в систему"""
-    return db.push_crm_summary(id_chat, json.loads(summary))
+    id_chat = request.id_chat
+    summary = request.summary
+    return db.push_crm_summary(id_chat, summary)
 
 
 async def get_last_chat_messages():

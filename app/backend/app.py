@@ -6,6 +6,7 @@ from core import llmquery, push_record, push_solved_chat
 from db import Database
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.openapi.docs import get_swagger_ui_html
+from pydantic import BaseModel
 from qdrant import (
     create_collection_from_file,
     get_collection,
@@ -40,19 +41,33 @@ async def fetch_json(url):
             return await response.json()
 
 
-@app.get("/push_request")
-async def push_request(chat_id: int, operatorName: str, operatorPosition: str):
+class ChatIdWithOperatorRequest(BaseModel):
+    chat_id: int
+    operator_name: str
+    operator_position: str
+
+
+@app.post("/push_request")
+async def push_request(request: ChatIdWithOperatorRequest):
+    chat_id = request.chat_id
+    operator_name = request.operator_name
+    operator_position = request.operator_position
     """Запушить запрос на обработку агентами и получить айди, по которому можно получить информацию обратно"""
     chat_history = await fetch_json(f"http://crm:8003/api/chat?id_chat={chat_id}")
     request_id = await push_record(
-        chat_id, chat_history, operatorName, operatorPosition
+        chat_id, chat_history, operator_name, operator_position
     )
     return {"request_id": request_id}
 
 
-@app.get("/push_solved_record")
-async def push_solved_record(chat_id: int):
+class ChatIdRequest(BaseModel):
+    chat_id: int
+
+
+@app.post("/push_solved_record")
+async def push_solved_record(request: ChatIdRequest):
     """Запушить решённый чат на обработку финальной цепочкой агентов и формирования CRM отчёта"""
+    chat_id = request.chat_id
     chat_history = await fetch_json(f"http://crm:8003/api/chat?id_chat={chat_id}")
     request_id = await push_solved_chat(chat_id, chat_history)
     return {"request_id": request_id}
@@ -103,15 +118,27 @@ async def get_collection_size():
         return {"error": "no collection"}
 
 
-@app.get("/llmquery")
-async def process_llm_query(query: str, chat_id: int):
+class LLMQueryRequest(BaseModel):
+    query: str
+    chat_id: int
+
+
+@app.post("/llmquery")
+async def process_llm_query(request: LLMQueryRequest):
+    query = request.query
+    chat_id = request.chat_id
     """Отправить запрос агенту-ассистенту (встроенный LLM чат)"""
     chat_history = await fetch_json(f"http://crm:8003/api/chat?id_chat={chat_id}")
     result = await llmquery(query, chat_history)
     return {"result": result}
 
 
-@app.get("/qdrantquery")
-async def qdrantquery(query: str, k: int = 3):
+class QueryRequest(BaseModel):
+    query: str
+    k: int = 3
+
+
+@app.post("/qdrantquery")
+async def qdrantquery(request: QueryRequest):
     """Отправить запрос в векторную базу данных и получить k релевантных результатов"""
-    return get_topk_results("database", query, k)
+    return get_topk_results("database", request.query, request.k)

@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 
 import requests
@@ -96,9 +95,9 @@ async def process_request(
 
     knowledge = await knowledge_agent_track.ainvoke(chat_history)
 
-    metadata = requests.get(f"http://crm:8003/api/records?id_chat={chat_id}").json()[
-        "client_meta"
-    ]
+    metadata = requests.get(
+        "http://crm:8003/api/records", params={"id_chat": chat_id}
+    ).json()["client_meta"]
 
     actions = await action_agent_track.ainvoke(
         {
@@ -118,8 +117,9 @@ async def process_request(
         "summary": short_summary,
     }
 
-    requests.get(
-        f"http://crm:8003/api/push_crm_summary?id_chat={chat_id}&summary={json.dumps(crm)}"
+    requests.post(
+        "http://crm:8003/api/push_crm_summary",
+        json={"id_chat": chat_id, "summary": crm},
     )
 
 
@@ -151,8 +151,9 @@ async def process_solved_chat(chat_id: int, request_id: int, chat_history):
         "resolution": resolution,
     }
 
-    requests.get(
-        f"http://crm:8003/api/push_crm_summary?id_chat={chat_id}&summary={json.dumps(crm)}"
+    requests.post(
+        "http://crm:8003/api/push_crm_summary",
+        json={"id_chat": chat_id, "summary": crm},
     )
 
 

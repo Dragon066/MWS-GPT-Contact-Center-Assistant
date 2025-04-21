@@ -1,12 +1,16 @@
 import os
+import warnings
 
 import requests
 from langchain.agents import AgentType, Tool, initialize_agent
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.runnable import Runnable
+from langchain_core._api.deprecation import LangChainDeprecationWarning
 from langchain_openai import ChatOpenAI
 
 from .BaseAgent import BaseAgent
+
+warnings.filterwarnings("ignore", category=LangChainDeprecationWarning)
 
 
 class KnowledgeAgent(BaseAgent):
@@ -46,8 +50,8 @@ class KnowledgeAgent(BaseAgent):
     def _tools():
         def vector_search(query: str):
             try:
-                r = requests.get(
-                    f"http://backend:8002/qdrantquery?query={query}"
+                r = requests.post(
+                    "http://backend:8002/qdrantquery", json={"query": query}
                 ).json()
                 return str(r)
             except Exception as ex:
