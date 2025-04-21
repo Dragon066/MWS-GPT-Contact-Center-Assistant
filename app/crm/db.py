@@ -97,7 +97,6 @@ class Database:
 
     def get_last_chat_messages(self):
         with self._get_session() as session:
-            # Подзапрос: находим последнее сообщение для каждого record_id
             subquery = (
                 session.query(
                     Chats.record_id, func.max(Chats.created_at).label("max_created_at")
@@ -106,7 +105,6 @@ class Database:
                 .subquery()
             )
 
-            # Основной запрос: получаем полные данные сообщений
             query = (
                 session.query(Chats)
                 .join(

@@ -13,12 +13,11 @@ from .BaseAgent import BaseAgent
 class PythonListOutputParser(StrOutputParser):
     def parse(self, text: str) -> List[Dict]:
         try:
-            # Извлекаем список из текста ответа
             start = text.find("[")
             end = text.rfind("]") + 1
             return ast.literal_eval(text[start:end])
         except (SyntaxError, ValueError):
-            return []  # Возвращаем пустой список при ошибке парсинга
+            return []
 
 
 class ActionSuggestionAgent(BaseAgent):
@@ -27,7 +26,7 @@ class ActionSuggestionAgent(BaseAgent):
             base_url=BaseAgent.LLM_BASE_URL,
             api_key=BaseAgent.LLM_API_KEY,
             model=os.getenv("LLM_ACTION_AGENT", "qwen2.5-32b-instruct"),
-            temperature=0.3,  # Немного креативности
+            temperature=0.2,
             verbose=verbose,
         )
 

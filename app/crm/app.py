@@ -18,7 +18,6 @@ async def custom_swagger_ui_html():
     )
 
 
-# Добавляем фильтры в Jinja2
 def urlencode_filter(s):
     return quote_plus(str(s))
 

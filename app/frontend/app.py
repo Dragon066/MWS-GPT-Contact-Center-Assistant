@@ -15,7 +15,6 @@ hide_streamlit_style = """
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Инициализация состояния сессии
 if "previous_data" not in st.session_state:
     st.session_state.previous_data = None
 if "chat_history" not in st.session_state:
@@ -52,14 +51,12 @@ def main():
         st.error("Не указан ID чата в параметрах URL")
         return
 
-    # Инициализация request_id
     if not st.session_state.request_id:
         response = requests.get(
             f"http://backend:8002/push_request?chat_id={chat_id}&operatorName={operator_name}&operatorPosition={operator_position}"
         )
         st.session_state.request_id = response.json().get("request_id")
 
-    # боковая панель
     with st.sidebar:
         get_model_status()
         col1, col2 = st.columns([0.5, 0.5])
@@ -96,7 +93,6 @@ def main():
         render_llm_chat(chat_id)
         render_model_controls()
 
-    # Динамические данные
     fetch_chat_data(chat_id, operator_name, operator_position)
     render_chat_messages()
     if not st.session_state.is_solved:
@@ -109,7 +105,6 @@ def main():
 @st.fragment(run_every=1)
 def render_llm_chat(chat_id):
     st.header("Чат с моделью")
-    # Контейнер для истории сообщений
     with st.container(height=200, border=True):
         for msg in st.session_state.llm_chat_history:
             with st.chat_message(
@@ -117,7 +112,6 @@ def render_llm_chat(chat_id):
             ):
                 st.markdown(msg["content"])
 
-    # Поле ввода с обработкой отправки
     if prompt := st.chat_input("Введите запрос для модели", key="llm_chat_input"):
         try:
             with st.spinner("Модель генерирует ответ..."):
@@ -145,7 +139,6 @@ def render_llm_chat(chat_id):
 @st.fragment(run_every=1)
 def get_model_status():
     if st.session_state.agent_statuses:
-        # CSS стиль для кружков
         circle_styles = """
         <style>
         .status-circles {
@@ -184,7 +177,6 @@ def get_model_status():
         </style>
         """
 
-        # HTML с кружками
         circle_html = '<div class="status-circles">'
         for agent, status in st.session_state.agent_statuses.items():
             if status == "done":
@@ -200,13 +192,10 @@ def get_model_status():
         st.markdown(circle_styles + circle_html, unsafe_allow_html=True)
 
 
-# Фрагмент: Получение данных чата
 @st.fragment(run_every=1)
 def fetch_chat_data(chat_id, operator_name, operator_position):
-    # Получение истории чата
     history_response = requests.get(f"http://crm:8003/api/chat?id_chat={chat_id}")
     if "last_user_message_id" not in st.session_state:
-        # Получи последнее сообщение от пользователя
         last_msg = next(
             (m for m in reversed(st.session_state.chat_history) if m["role"] == "user"),
             None,
@@ -221,9 +210,8 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
         )
 
     if last_user_msg:
-        last_id = last_user_msg.get("id")  # если есть ID, можно сравнивать по нему
+        last_id = last_user_msg.get("id")
         if last_id != st.session_state.get("last_user_message_id"):
-            # Новое сообщение от пользователя! Отправим push_request
             response = requests.get(
                 f"http://backend:8002/push_request?chat_id={chat_id}&operatorName={operator_name}&operatorPosition={operator_position}"
             )
@@ -233,14 +221,12 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
         if new_history != st.session_state.chat_history:
             st.session_state.chat_history = new_history
 
-    # Получение информации о чате
     info_response = requests.get(f"http://backend:8002/get_chat_info?chat_id={chat_id}")
     if info_response.status_code == 200:
         new_info = info_response.json()
         if new_info != st.session_state.chat_info:
             st.session_state.chat_info = new_info
 
-    # Получение действий и статусов
     if st.session_state.request_id:
         actions_response = requests.get(
             f"http://backend:8002/get_request_info?request_id={st.session_state.request_id}"
@@ -253,7 +239,6 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
                 st.session_state.agent_statuses = new_data.get("agent_statuses", {})
 
 
-# Фрагмент: Отображение информации о чате
 @st.fragment(run_every=1)
 def render_chat_info(chat_id):
     st.header("Информация о чате")
@@ -276,18 +261,8 @@ def render_chat_info(chat_id):
         st.write(f"**Краткое описание**: {summary}")
 
 
-# Фрагмент: Управление моделью
 @st.fragment(run_every=1)
 def render_model_controls():
-    # st.divider()
-    # if st.button("Показать детали работы модели", key="toggle_details"):
-    #     st.session_state.show_details = not st.session_state.get("show_details", False)
-
-    # if st.session_state.get("show_details"):
-    #     with st.expander("Состояние модели", expanded=True):
-    #         for model, status in st.session_state.agent_statuses.items():
-    #             st.write(f"{model}: {status}")
-
     st.divider()
     if not st.session_state.is_solved:
         if st.button("Пометить как решенное"):
@@ -304,7 +279,6 @@ def render_model_controls():
         st.warning("Чат уже помечен как решенный")
 
 
-# Отображение сообщений
 @st.fragment(run_every=1)
 def render_chat_messages():
     emotion = st.session_state.get("chat_info", {}).get(
@@ -317,9 +291,7 @@ def render_chat_messages():
         "грусть": "😔",
     }.get(emotion, "🙂")
 
-    # Создаем основной контейнер с фиксированной высотой
     with st.container(height=500, border=True):
-        # CSS стили для сообщений (внутри контейнера)
         st.markdown(
             """
         <style>
@@ -371,10 +343,8 @@ def render_chat_messages():
             unsafe_allow_html=True,
         )
 
-        # Контейнер для сообщений с прокруткой
         st.markdown('<div class="chat-messages">', unsafe_allow_html=True)
 
-        # Отображаем историю сообщений
         for message in st.session_state.get("chat_history", []):
             if message["role"] == "user":
                 st.markdown(
@@ -417,7 +387,6 @@ def render_chat_messages():
         )
 
 
-# Рекомендованные ответы
 @st.fragment(run_every=1)
 def render_suggestions():
     if st.session_state.actions:
@@ -435,7 +404,6 @@ def render_suggestions():
                         st.rerun(scope="fragment")
 
 
-# Фрагмент: Ввод сообщения
 @st.fragment(run_every=1)
 def handle_message_input(chat_id):
     reply = st.text_area(
@@ -459,7 +427,7 @@ def handle_message_input(chat_id):
                     },
                 )
                 st.session_state.reply_text = ""
-                st.rerun()  # Для мгновенного обновления данных
+                st.rerun()
             except Exception as e:
                 st.error(f"Ошибка отправки: {str(e)}")
         else:

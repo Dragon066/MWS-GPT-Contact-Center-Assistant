@@ -29,7 +29,6 @@ def with_tracking(base_runnable, agent_name: str, request_id: str):
 
         return result
 
-    # Возвращаем новую Runnable с трекингом
     return RunnableLambda(track)
 
 

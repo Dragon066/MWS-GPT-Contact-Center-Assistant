@@ -21,7 +21,6 @@ class QualityAssuranceAgent(BaseAgent):
             verbose=verbose,
         )
 
-        # Промпт для оценки качества общения
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
@@ -44,7 +43,6 @@ class QualityAssuranceAgent(BaseAgent):
             ]
         )
 
-        # Пайплайн для обработки с использованием LLM
         chain = prompt | llm | StrOutputParser()
 
         if verbose:

@@ -84,7 +84,6 @@ async def upload_file(file: UploadFile = File(...)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Поддерживаются только CSV файлы")
 
-    # try:
     contents = await file.read()
 
     await create_collection_from_file("database", io.StringIO(contents.decode("utf-8")))
@@ -93,8 +92,6 @@ async def upload_file(file: UploadFile = File(...)):
         "status": "success",
         "message": "File uploaded successfully",
     }
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/collection_size")
