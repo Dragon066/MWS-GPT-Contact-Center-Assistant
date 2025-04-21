@@ -45,7 +45,7 @@ resolution_agent = ResolutionAgent(VERBOSE_MODELS_CHAINS)
 assistant_agent = AssistantAgent(VERBOSE_MODELS_AGENTS)
 
 
-async def push_record(chat_id: int, chat_history, operatorName, operatorPosition):
+async def push_record(chat_id: int, chat_history, operator_name, operator_position):
     if chat_history[-1]["role"] in ("human", "user"):
         request_id, is_new = db.add_new_request(chat_id, len(chat_history))
     else:
@@ -54,7 +54,7 @@ async def push_record(chat_id: int, chat_history, operatorName, operatorPosition
     if is_new:
         asyncio.create_task(
             process_request(
-                chat_id, request_id, chat_history, operatorName, operatorPosition
+                chat_id, request_id, chat_history, operator_name, operator_position
             )
         )
     return request_id
@@ -67,7 +67,7 @@ async def push_solved_chat(chat_id: int, chat_history):
 
 
 async def process_request(
-    chat_id: int, request_id: int, chat_history, operatorName, operatorPosition
+    chat_id: int, request_id: int, chat_history, operator_name, operator_position
 ):
     intent_agent_track = with_tracking(intent_agent, "intent", request_id)
     emotion_agent_track = with_tracking(emotion_agent, "emotion", request_id)
@@ -107,7 +107,7 @@ async def process_request(
             "emotion": emotion_last,
             "intent": intent,
             "metadata": metadata,
-            "operator": {"name": operatorName, "position": operatorPosition},
+            "operator": {"name": operator_name, "position": operator_position},
         }
     )
     db.update_request_actions(request_id, actions)
