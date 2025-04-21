@@ -17,7 +17,7 @@ class ResolutionAgent(BaseAgent):
         llm = ChatOpenAI(
             base_url=BaseAgent.LLM_BASE_URL,
             api_key=BaseAgent.LLM_API_KEY,
-            model=os.getenv("LLM_EMOTION_AGENT", "qwen2.5-32b-instruct"),
+            model=os.getenv("LLM_RESOLUTION_AGENT", "qwen2.5-32b-instruct"),
             temperature=0,
             verbose=verbose,
         )
