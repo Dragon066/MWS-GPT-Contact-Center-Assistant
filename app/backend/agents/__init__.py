@@ -1,4 +1,5 @@
 from agents.ActionSuggestionAgent import ActionSuggestionAgent
+from agents.AssistantAgent import AssistantAgent
 from agents.EmotionAgent import EmotionAgent
 from agents.IntentAgent import IntentAgent
 from agents.KnowledgeAgent import KnowledgeAgent
@@ -14,4 +15,5 @@ __all__ = [
     "ActionSuggestionAgent",
     "QualityAssuranceAgent",
     "ResolutionAgent",
+    "AssistantAgent",
 ]
