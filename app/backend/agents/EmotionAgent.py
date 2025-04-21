@@ -1,7 +1,6 @@
 import os
 
 from langchain.callbacks.tracers import ConsoleCallbackHandler
-from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import Runnable, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
