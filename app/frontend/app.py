@@ -3,14 +3,27 @@ from urllib.parse import unquote
 
 import requests
 import streamlit as st
+from markdown import markdown
 
-st.set_page_config(page_title="Чат с клиентом", page_icon="💬", layout="wide")
+st.set_page_config(
+    page_title="Чат с клиентом",
+    page_icon="💬",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 hide_streamlit_style = """
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stStatusWidget {display: none;}
+        [data-testid="stHeader"] {
+            display: none;
+        }
+        [data-testid="stSidebar"] {
+            min-width: 500px;
+            max-width: 800px;
+        }
+        [data-testid="stMainBlockContainer"] {
+            padding: 10px;
+        }
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -33,6 +46,18 @@ if "chat_id" not in st.session_state:
     st.session_state.chat_id = None
 if "llm_chat_history" not in st.session_state:
     st.session_state.llm_chat_history = []
+if "working_agent" not in st.session_state:
+    st.session_state.working_agent = None
+
+agent_working_messages = {
+    "intent": "Формирование темы запроса...",
+    "emotion": "Определение эмоции клиента...",
+    "knowledge": "Формирование ответа из базы данных...",
+    "summary": "Определение краткого содержания...",
+    "action": "Формирование возможных действий...",
+    "quality": "Оценка качества работы оператора...",
+    "resolution": "Определение исхода запроса...",
+}
 
 
 def main():
@@ -42,7 +67,9 @@ def main():
     operator_name = unquote(query_params.get("operatorName", [""]))
     operator_position = unquote(query_params.get("operatorPosition", [""]))
 
-    record = requests.get(f"http://crm:8003/api/records?id_chat={chat_id}").json()
+    record = requests.get(
+        "http://crm:8003/api/records", params={"id_chat": chat_id}
+    ).json()
 
     client_response = record["client_meta"]
     st.session_state.is_solved = record["solved"]
@@ -52,46 +79,58 @@ def main():
         return
 
     if not st.session_state.request_id:
-        response = requests.get(
-            f"http://backend:8002/push_request?chat_id={chat_id}&operatorName={operator_name}&operatorPosition={operator_position}"
+        response = requests.post(
+            "http://backend:8002/push_request",
+            json={
+                "chat_id": chat_id,
+                "operator_name": operator_name,
+                "operator_position": operator_position,
+            },
         )
+
         st.session_state.request_id = response.json().get("request_id")
 
     with st.sidebar:
-        get_model_status()
-        col1, col2 = st.columns([0.5, 0.5])
-        with col1:
-            st.markdown(
-                f"""
-                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:350px">
-                    <h3 style="font-weight: bold">Оператор</h3>
-                    <p><strong>Имя:</strong> {operator_name or "Не указано"}</p>
-                    <p><strong>Должность:</strong> {operator_position or "Не указана"}</p>
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
+        with st.container(border=True):
+            col_1, col_2 = st.columns([0.5, 0.5])
+            with col_1:
+                st.markdown("### Состояние цепи:")
+            with col_2:
+                get_model_status()
 
+        with st.container(border=True):
+            col_1, col_2 = st.columns([0.5, 0.5])
+            with col_1:
+                st.markdown(
+                    f"<p><strong>Оператор: </strong>{operator_name or 'Не указано'} / {operator_position or 'Не указана'}</p>",
+                    unsafe_allow_html=True,
+                )
+            with col_2:
+                render_model_controls()
+
+        st.markdown(
+            f"### Клиент / <span style='white-space: nowrap'>{client_response['Номер телефона']}</span>",
+            unsafe_allow_html=True,
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Устройство:**", client_response["Устройство"])
+            st.write("**МТС Premium:**", client_response["МТС Premium"])
         with col2:
-            st.markdown(
-                f"""
-                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:350px">
-                    <h3 style="font-weight: bold">Клиент</h3>
-                    <p><strong>Номер телефона:</strong><span style="white-space: nowrap;"> {client_response["Номер телефона"]}</span></p>
-                    <p><strong>Абонент МТС:</strong> {client_response["Абонент МТС"]}</p>
-                    <p><strong>Тариф:</strong> {client_response["Тариф"]}</p>
-                    <p><strong>Устройство:</strong> {client_response["Устройство"]}</p>
-                    <p><strong>МТС Premium:</strong> {client_response["МТС Premium"]}</p>
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
+            st.write("**Абонент МТС:**", client_response["Абонент МТС"])
+            if client_response["Абонент МТС"].lower() != "нет":
+                st.write("**Тариф:**", client_response["Тариф"])
 
         st.divider()
         render_chat_info(chat_id)
-        st.divider()
-        render_llm_chat(chat_id)
-        render_model_controls()
+        if not st.session_state.is_solved:
+            st.divider()
+            render_llm_chat(chat_id)
+
+        with st.expander("#### Вся информация о клиенте"):
+            for key, value in client_response.items():
+                st.write(f"**{key}**: {value}")
 
     fetch_chat_data(chat_id, operator_name, operator_position)
     render_chat_messages()
@@ -104,7 +143,7 @@ def main():
 
 @st.fragment(run_every=1)
 def render_llm_chat(chat_id):
-    st.header("Чат с моделью")
+    st.header("Ваш персональный ассистент")
     with st.container(height=200, border=True):
         for msg in st.session_state.llm_chat_history:
             with st.chat_message(
@@ -112,17 +151,18 @@ def render_llm_chat(chat_id):
             ):
                 st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Введите запрос для модели", key="llm_chat_input"):
+    if prompt := st.chat_input("Введите запрос для ассистента", key="llm_chat_input"):
         try:
-            with st.spinner("Модель генерирует ответ..."):
-                response = requests.get(
-                    f"http://backend:8002/llmquery?chat_id={chat_id}&query={prompt}"
+            with st.spinner("Ассистент генерирует ответ..."):
+                response = requests.post(
+                    "http://backend:8002/llmquery",
+                    json={"chat_id": chat_id, "query": prompt},
                 )
 
                 if response.status_code == 200:
-                    result = response.json().get("result", "Нет ответа от модели.")
+                    result = response.json().get("result", "Нет ответа от ассистента.")
                 else:
-                    result = "Ошибка при получении ответа от модели."
+                    result = "Ошибка при получении ответа от ассистента."
 
                 st.session_state.llm_chat_history.append(
                     {"role": "user", "content": prompt}
@@ -145,7 +185,8 @@ def get_model_status():
             position: static;
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-top: 10px;
+            transition: opacity 0.2s ease;
         }
         .circle {
             width: 20px;
@@ -153,6 +194,10 @@ def get_model_status():
             border-radius: 50%;
             display: inline-block;
             position: relative;
+            opacity: 0.8;
+        }
+        .circle:hover {
+            opacity: 1;
         }
         .circle[title]::after {
             content: attr(title);
@@ -174,6 +219,14 @@ def get_model_status():
         .circle[title]:hover::after {
             opacity: 1;
         }
+        @keyframes blink {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.8; }
+        }
+
+        .blinking {
+        animation: blink 1s infinite;
+        }
         </style>
         """
 
@@ -186,7 +239,11 @@ def get_model_status():
             else:
                 color = "#F44336"  # Красный
 
-            circle_html += f'<div class="circle" title="{agent}" style="background-color: {color};"></div>'
+            if status == "in work":
+                st.session_state.working_agent = agent
+                circle_html += f'<div class="circle blinking" title="{agent}" style="background-color: {color};"></div>'
+            else:
+                circle_html += f'<div class="circle" title="{agent}" style="background-color: {color};"></div>'
         circle_html += "</div>"
 
         st.markdown(circle_styles + circle_html, unsafe_allow_html=True)
@@ -194,7 +251,9 @@ def get_model_status():
 
 @st.fragment(run_every=1)
 def fetch_chat_data(chat_id, operator_name, operator_position):
-    history_response = requests.get(f"http://crm:8003/api/chat?id_chat={chat_id}")
+    history_response = requests.get(
+        "http://crm:8003/api/chat", params={"id_chat": chat_id}
+    )
     if "last_user_message_id" not in st.session_state:
         last_msg = next(
             (m for m in reversed(st.session_state.chat_history) if m["role"] == "user"),
@@ -212,8 +271,13 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
     if last_user_msg:
         last_id = last_user_msg.get("id")
         if last_id != st.session_state.get("last_user_message_id"):
-            response = requests.get(
-                f"http://backend:8002/push_request?chat_id={chat_id}&operatorName={operator_name}&operatorPosition={operator_position}"
+            response = requests.post(
+                "http://backend:8002/push_request",
+                json={
+                    "chat_id": chat_id,
+                    "operator_name": operator_name,
+                    "operator_position": operator_position,
+                },
             )
             st.session_state.request_id = response.json().get("request_id")
             st.session_state.last_user_message_id = last_id
@@ -221,7 +285,9 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
         if new_history != st.session_state.chat_history:
             st.session_state.chat_history = new_history
 
-    info_response = requests.get(f"http://backend:8002/get_chat_info?chat_id={chat_id}")
+    info_response = requests.get(
+        "http://backend:8002/get_chat_info", params={"chat_id": chat_id}
+    )
     if info_response.status_code == 200:
         new_info = info_response.json()
         if new_info != st.session_state.chat_info:
@@ -229,7 +295,8 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
 
     if st.session_state.request_id:
         actions_response = requests.get(
-            f"http://backend:8002/get_request_info?request_id={st.session_state.request_id}"
+            "http://backend:8002/get_request_info",
+            params={"request_id": st.session_state.request_id},
         )
         if actions_response.status_code == 200:
             new_data = actions_response.json()
@@ -242,8 +309,6 @@ def fetch_chat_data(chat_id, operator_name, operator_position):
 @st.fragment(run_every=1)
 def render_chat_info(chat_id):
     st.header("Информация о чате")
-    st.write(f"**ID чата**: {chat_id}")
-    st.write(f"**Статус**: {'Решен' if st.session_state.is_solved else 'Активен'}")
 
     if st.session_state.chat_info.get("intent"):
         st.write(f"**Тема обращения**: {st.session_state.chat_info['intent']}")
@@ -260,23 +325,30 @@ def render_chat_info(chat_id):
     if summary := st.session_state.chat_info.get("short_chat_summary"):
         st.write(f"**Краткое описание**: {summary}")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"**ID чата**: {chat_id}")
+    with col2:
+        st.write(f"**Статус**: {'Решен' if st.session_state.is_solved else 'Активен'}")
+
 
 @st.fragment(run_every=1)
 def render_model_controls():
-    st.divider()
     if not st.session_state.is_solved:
         if st.button("Пометить как решенное"):
-            requests.get(
-                f"http://crm:8003/api/mark_as_solved?id_chat={st.session_state.chat_id}"
+            requests.post(
+                "http://crm:8003/api/mark_as_solved",
+                json={"id_chat": st.session_state.chat_id},
             )
-            requests.get(
-                f"http://backend:8002/push_solved_record?chat_id={st.session_state.chat_id}"
+            requests.post(
+                "http://backend:8002/push_solved_record?",
+                json={"chat_id": st.session_state.chat_id},
             )
             st.session_state.is_solved = True
             st.success("Чат помечен как решенный")
             st.rerun()
     else:
-        st.warning("Чат уже помечен как решенный")
+        st.warning("Чат закрыт")
 
 
 @st.fragment(run_every=1)
@@ -291,7 +363,7 @@ def render_chat_messages():
         "грусть": "😔",
     }.get(emotion, "🙂")
 
-    with st.container(height=500, border=True):
+    with st.container(height=400, border=True):
         st.markdown(
             """
         <style>
@@ -352,7 +424,7 @@ def render_chat_messages():
                 <div class="message user-message">
                     <div class="message-sender">Клиент {user_avatar}</div>
                     <div class="message-bubble user-bubble">{message["content"]}</div>
-                    <div class="message-time">{message.get("created_at", "")}</div>
+                    <div class="message-time">{datetime.fromisoformat(message.get("created_at", "")).strftime("%d.%m.%Y, %H:%M:%S")}</div>
                 </div>
                 """,
                     unsafe_allow_html=True,
@@ -362,7 +434,7 @@ def render_chat_messages():
                     f"""
                 <div class="message bot-message">
                     <div class="message-sender">🤖 Оператор</div>
-                    <div class="message-bubble bot-bubble">{message["content"]}</div>
+                    <div class="message-bubble bot-bubble">{markdown(message["content"])}</div>
                     <div class="message-time">{datetime.fromisoformat(message.get("created_at", "")).strftime("%d.%m.%Y, %H:%M:%S")}</div>
                 </div>
                 """,
@@ -389,32 +461,47 @@ def render_chat_messages():
 
 @st.fragment(run_every=1)
 def render_suggestions():
-    if st.session_state.actions:
-        with st.container(height=100, border=True):
-            st.markdown("Рекомендованные ответы:")
-            cols = st.columns(2)
-            for i, suggestion in enumerate(st.session_state.actions):
-                with cols[i % 2]:
-                    if st.button(
-                        suggestion["title"],
-                        key=f"suggestion_{i}",
-                        use_container_width=True,
-                    ):
-                        st.session_state.reply_text = suggestion["text"]
-                        st.rerun(scope="fragment")
+    if not st.session_state.is_solved:
+        with st.container(border=True):
+            if st.session_state.actions:
+                num = len(st.session_state.actions)
+                num_cols = min(num, 3)
+
+                cols = st.columns(num_cols)
+
+                for i, suggestion in enumerate(st.session_state.actions):
+                    with cols[i % num_cols]:
+                        if st.button(
+                            suggestion["title"],
+                            key=f"suggestion_{i}",
+                            use_container_width=True,
+                        ):
+                            st.session_state.reply_text = suggestion["text"]
+                            st.rerun(scope="fragment")
+            else:
+                if st.session_state.working_agent:
+                    spinning_text = agent_working_messages.get(
+                        st.session_state.working_agent,
+                        "Гоняем фиксиков по компьютерам...",
+                    )
+                    st.write(
+                        f'<div class="blinking" style="margin-bottom: 10px;">{spinning_text}</div>',
+                        unsafe_allow_html=True,
+                    )
 
 
 @st.fragment(run_every=1)
 def handle_message_input(chat_id):
     reply = st.text_area(
-        "Ваш ответ",
+        "Ответ",
         value=st.session_state.get("reply_text", ""),
         height=120,
         placeholder="Введите текст или выберите вариант выше...",
         key="reply_input",
+        label_visibility="collapsed",
     )
 
-    if st.button("Отправить ответ", type="primary"):
+    if st.button("Отправить ответ", type="primary", use_container_width=True):
         if reply.strip():
             try:
                 requests.get(
