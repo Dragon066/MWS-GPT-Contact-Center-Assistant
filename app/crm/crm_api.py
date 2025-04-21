@@ -24,53 +24,53 @@ async def get_all_records():
     return db.get_all_records()
 
 
-async def get_record(id_chat):
-    return db.get_record(id_chat)
+async def get_record(chat_id):
+    return db.get_record(chat_id)
 
 
 @router.get("/records")
-async def get_records_api(id_chat: int | None = None):
-    """Получить все чаты при id_chat = None и получить конкретный Record при id_chat: integer"""
-    if id_chat is None:
+async def get_records_api(chat_id: int | None = None):
+    """Получить все чаты при chat_id = None и получить конкретный Record при chat_id: integer"""
+    if chat_id is None:
         return await get_all_records()
-    return await get_record(id_chat)
+    return await get_record(chat_id)
 
 
-async def get_chat(id_chat):
-    return db.get_all_messages(id_chat)
+async def get_chat(chat_id):
+    return db.get_all_messages(chat_id)
 
 
 @router.get("/chat")
-async def get_chat_api(id_chat: int):
+async def get_chat_api(chat_id: int):
     """Получить все сообщения из чата"""
-    return await get_chat(id_chat)
+    return await get_chat(chat_id)
 
 
-async def mark_as_solved(id_chat):
-    return db.mark_as_solved(id_chat)
+async def mark_as_solved(chat_id):
+    return db.mark_as_solved(chat_id)
 
 
 class ChatIdRequest(BaseModel):
-    id_chat: int
+    chat_id: int
 
 
 @router.post("/mark_as_solved")
 async def mark_as_solved_api(request: ChatIdRequest):
     """Пометить чат как решённый"""
-    return await mark_as_solved(request.id_chat)
+    return await mark_as_solved(request.chat_id)
 
 
 class CRMRequest(BaseModel):
-    id_chat: int
+    chat_id: int
     summary: dict
 
 
 @router.post("/push_crm_summary")
 async def push_crm_summary_api(request: CRMRequest):
     """Запушить отчёт в систему"""
-    id_chat = request.id_chat
+    chat_id = request.chat_id
     summary = request.summary
-    return db.push_crm_summary(id_chat, summary)
+    return db.push_crm_summary(chat_id, summary)
 
 
 async def get_last_chat_messages():

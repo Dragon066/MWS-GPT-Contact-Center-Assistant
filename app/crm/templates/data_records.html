@@ -595,7 +595,7 @@
                 document.getElementById('summary-quality').textContent = 'Загрузка...';
                 document.getElementById('summary-resolution').textContent = 'Загрузка...';
                 
-                const response = await fetch(`/crm/api/records?id_chat=${chatId}`);
+                const response = await fetch(`/crm/api/records?chat_id=${chatId}`);
                 if (response.ok) {
                     const data = await response.json();
                     const summary = data.crm_summary;

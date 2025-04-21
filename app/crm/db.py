@@ -63,17 +63,17 @@ class Database:
     def close(self):
         self.Session.remove()
 
-    def add_data(self, id_chat, type, content, role="user"):
+    def add_data(self, chat_id, type, content, role="user"):
         with self._get_session() as session:
-            if not session.query(Records).filter(Records.id == id_chat).first():
+            if not session.query(Records).filter(Records.id == chat_id).first():
                 new_data = Records(
-                    id=id_chat,
+                    id=chat_id,
                     type=type,
                     client_meta=generate_subscriber(),
                 )
                 session.add(new_data)
             new_data_chats = Chats(
-                record_id=id_chat,
+                record_id=chat_id,
                 content=content,
                 role=role,
             )
@@ -90,9 +90,9 @@ class Database:
             query = session.query(Records).filter(Records.id == record_id)
             return query.first()
 
-    def get_all_messages(self, id_chat=None):
+    def get_all_messages(self, chat_id=None):
         with self._get_session() as session:
-            query = session.query(Chats).filter(Chats.record_id == id_chat)
+            query = session.query(Chats).filter(Chats.record_id == chat_id)
             return query.all()
 
     def get_last_chat_messages(self):
@@ -117,18 +117,18 @@ class Database:
 
             return query.all()
 
-    def mark_as_solved(self, id_chat):
+    def mark_as_solved(self, chat_id):
         with self._get_session() as session:
-            record = session.query(Records).filter(Records.id == id_chat).first()
+            record = session.query(Records).filter(Records.id == chat_id).first()
             if record:
                 record.solved = True
                 session.commit()
                 return True
             return False
 
-    def push_crm_summary(self, id_chat, summary):
+    def push_crm_summary(self, chat_id, summary):
         with self._get_session() as session:
-            record = session.query(Records).filter(Records.id == id_chat).first()
+            record = session.query(Records).filter(Records.id == chat_id).first()
             if record:
                 record.crm_summary = summary
                 session.commit()

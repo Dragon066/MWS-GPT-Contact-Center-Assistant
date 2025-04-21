@@ -67,22 +67,22 @@ class Database:
     def close(self):
         self.Session.remove()
 
-    def add_new_request(self, id_chat, chat_length: int) -> tuple[int, bool]:
+    def add_new_request(self, chat_id, chat_length: int) -> tuple[int, bool]:
         with self._get_session() as session:
             if (
                 not session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             ):
                 new_data_chatsummary = ChatSummary(
-                    chat_id=id_chat,
+                    chat_id=chat_id,
                 )
                 session.add(new_data_chatsummary)
 
             existing_request = (
                 session.query(Requests)
                 .filter(
-                    Requests.chat_id == id_chat,
+                    Requests.chat_id == chat_id,
                     Requests.chat_length == chat_length,
                 )
                 .first()
@@ -92,26 +92,26 @@ class Database:
                 return existing_request.id, False
 
             new_data_request = Requests(
-                chat_id=id_chat,
+                chat_id=chat_id,
                 chat_length=chat_length,
             )
             session.add(new_data_request)
             session.commit()
             return new_data_request.id, True
 
-    def get_last_request(self, id_chat) -> int:
+    def get_last_request(self, chat_id) -> int:
         with self._get_session() as session:
             if (
                 not session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             ):
-                return {"error": f"no chat #{id_chat}"}
+                return {"error": f"no chat #{chat_id}"}
 
             existing_request = (
                 session.query(Requests)
                 .filter(
-                    Requests.chat_id == id_chat,
+                    Requests.chat_id == chat_id,
                 )
                 .order_by(Requests.id.desc())
                 .first()
@@ -119,11 +119,11 @@ class Database:
 
             return existing_request.id
 
-    def update_request_status(self, id_request: int, agent: str, status: str):
+    def update_request_status(self, request_id: int, agent: str, status: str):
         with self._get_session() as session:
-            request = session.query(Requests).filter(Requests.id == id_request).first()
+            request = session.query(Requests).filter(Requests.id == request_id).first()
             if not request:
-                raise ValueError(f"Request with id {id_request} not found")
+                raise ValueError(f"Request with id {request_id} not found")
 
             current_statuses = dict(request.agent_statuses)
 
@@ -133,101 +133,101 @@ class Database:
 
             session.commit()
 
-    def update_request_actions(self, id_request: int, actions: dict):
+    def update_request_actions(self, request_id: int, actions: dict):
         with self._get_session() as session:
-            request = session.query(Requests).filter(Requests.id == id_request).first()
+            request = session.query(Requests).filter(Requests.id == request_id).first()
             if not request:
-                raise ValueError(f"Request with id {id_request} not found")
+                raise ValueError(f"Request with id {request_id} not found")
 
             request.actions = actions
 
             session.commit()
 
-    def update_request_emotion(self, id_request: int, emotion: str):
+    def update_request_emotion(self, request_id: int, emotion: str):
         with self._get_session() as session:
-            request = session.query(Requests).filter(Requests.id == id_request).first()
+            request = session.query(Requests).filter(Requests.id == request_id).first()
             if not request:
-                raise ValueError(f"Request with id {id_request} not found")
+                raise ValueError(f"Request with id {request_id} not found")
 
             request.emotion = emotion
 
             session.commit()
 
-    def update_chat_summary_intent(self, id_chat: int, intent: str):
+    def update_chat_summary_intent(self, chat_id: int, intent: str):
         with self._get_session() as session:
             request = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if not request:
-                raise ValueError(f"Chat with id {id_chat} not found")
+                raise ValueError(f"Chat with id {chat_id} not found")
 
             request.intent = intent
 
             session.commit()
 
-    def update_chat_summary_short_summary(self, id_chat: int, short_summary: str):
+    def update_chat_summary_short_summary(self, chat_id: int, short_summary: str):
         with self._get_session() as session:
             request = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if not request:
-                raise ValueError(f"Chat with id {id_chat} not found")
+                raise ValueError(f"Chat with id {chat_id} not found")
 
             request.short_chat_summary = short_summary
 
             session.commit()
 
-    def update_chat_summary_emotion(self, id_chat: int, emotion: str):
+    def update_chat_summary_emotion(self, chat_id: int, emotion: str):
         with self._get_session() as session:
             request = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if not request:
-                raise ValueError(f"Chat with id {id_chat} not found")
+                raise ValueError(f"Chat with id {chat_id} not found")
 
             request.emotion_summary = emotion
 
             session.commit()
 
-    def update_chat_quality(self, id_chat: int, quality: dict):
+    def update_chat_quality(self, chat_id: int, quality: dict):
         with self._get_session() as session:
             request = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if not request:
-                raise ValueError(f"Chat with id {id_chat} not found")
+                raise ValueError(f"Chat with id {chat_id} not found")
 
             request.quality_summary = quality
 
             session.commit()
 
-    def update_chat_crm(self, id_chat: int, crm_summary: dict):
+    def update_chat_crm(self, chat_id: int, crm_summary: dict):
         with self._get_session() as session:
             request = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if not request:
-                raise ValueError(f"Chat with id {id_chat} not found")
+                raise ValueError(f"Chat with id {chat_id} not found")
 
             request.crm_summary = crm_summary
 
             session.commit()
 
-    def mark_as_solved(self, id_chat):
+    def mark_as_solved(self, chat_id):
         with self._get_session() as session:
             record = (
                 session.query(ChatSummary)
-                .filter(ChatSummary.chat_id == id_chat)
+                .filter(ChatSummary.chat_id == chat_id)
                 .first()
             )
             if record:

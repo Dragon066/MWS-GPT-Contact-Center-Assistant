@@ -96,7 +96,7 @@ async def process_request(
     knowledge = await knowledge_agent_track.ainvoke(chat_history)
 
     metadata = requests.get(
-        "http://crm:8003/api/records", params={"id_chat": chat_id}
+        "http://crm:8003/api/records", params={"chat_id": chat_id}
     ).json()["client_meta"]
 
     actions = await action_agent_track.ainvoke(
@@ -119,7 +119,7 @@ async def process_request(
 
     requests.post(
         "http://crm:8003/api/push_crm_summary",
-        json={"id_chat": chat_id, "summary": crm},
+        json={"chat_id": chat_id, "summary": crm},
     )
 
 
@@ -153,7 +153,7 @@ async def process_solved_chat(chat_id: int, request_id: int, chat_history):
 
     requests.post(
         "http://crm:8003/api/push_crm_summary",
-        json={"id_chat": chat_id, "summary": crm},
+        json={"chat_id": chat_id, "summary": crm},
     )
 
 

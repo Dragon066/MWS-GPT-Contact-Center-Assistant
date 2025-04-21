@@ -68,7 +68,7 @@ def main():
     operator_position = unquote(query_params.get("operatorPosition", [""]))
 
     record = requests.get(
-        "http://crm:8003/api/records", params={"id_chat": chat_id}
+        "http://crm:8003/api/records", params={"chat_id": chat_id}
     ).json()
 
     client_response = record["client_meta"]
@@ -252,7 +252,7 @@ def get_model_status():
 @st.fragment(run_every=1)
 def fetch_chat_data(chat_id, operator_name, operator_position):
     history_response = requests.get(
-        "http://crm:8003/api/chat", params={"id_chat": chat_id}
+        "http://crm:8003/api/chat", params={"chat_id": chat_id}
     )
     if "last_user_message_id" not in st.session_state:
         last_msg = next(
@@ -338,7 +338,7 @@ def render_model_controls():
         if st.button("Пометить как решенное"):
             requests.post(
                 "http://crm:8003/api/mark_as_solved",
-                json={"id_chat": st.session_state.chat_id},
+                json={"chat_id": st.session_state.chat_id},
             )
             requests.post(
                 "http://backend:8002/push_solved_record?",
