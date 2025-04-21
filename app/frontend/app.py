@@ -63,7 +63,7 @@ def main():
         with col1:
             st.markdown(
                 f"""
-                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:300px">
+                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:350px">
                     <h3 style="font-weight: bold">Оператор</h3>
                     <p><strong>Имя:</strong> {operator_name or "Не указано"}</p>
                     <p><strong>Должность:</strong> {operator_position or "Не указана"}</p>
@@ -75,7 +75,7 @@ def main():
         with col2:
             st.markdown(
                 f"""
-                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:300px">
+                <div style="border:1px solid #ddd; padding:10px; border-radius:8px; background-color: #282832; margin-bottom:10px; min-height:350px">
                     <h3 style="font-weight: bold">Клиент</h3>
                     <p><strong>Номер телефона:</strong><span style="white-space: nowrap;"> {client_response["Номер телефона"]}</span></p>
                     <p><strong>Абонент МТС:</strong> {client_response["Абонент МТС"]}</p>
